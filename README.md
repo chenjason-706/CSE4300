@@ -3,7 +3,7 @@
 Welcome to the Fall 2026 group project repository for CSE OS courses.
 
 ## Folder Structure
-- `CSE3100/`
+- `CSE4300/`
 - `CSE5305/`
 
 Each team should:

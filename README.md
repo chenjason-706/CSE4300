@@ -15,7 +15,7 @@ Each team should:
 ## Submitting via Pull Request
 
 1. Fork this repository to your own GitHub account.
-2. Clone your fork: git clone https://github.com/<your-username>/CSE-OS-Fall-2026.git.
+2. Clone your fork: git clone https://github.com/your-username/CSE-OS-Fall-2026.git.
 3. Create a new branch: 
 ```bash
 git checkout -b add-team-firstname of member1-firstname of member2.

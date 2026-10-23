@@ -42,5 +42,5 @@ git push origin add-team-firstname of member1-firstname of member2
 1. Do **not** modify other teams’ folders.
 2. All documents, source code and slides must be inside your team folder and submitted on time.
 3. Keep your folder organized and readable.
-4. Each student must prepare a 6–7 minute presentation. Grading will be based on design documentation, code implementation, and presentation quality.
+4. Each student must prepare a 6–7 minute presentation. The group will give one large presentation together, but each member should present their own assigned part. Grading will be based on design documentation, code implementation, and presentation quality.
 5. Submission deadline: November 19, 2026. Please make sure all files are uploaded before the deadline.

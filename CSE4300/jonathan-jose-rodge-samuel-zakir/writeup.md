@@ -1,4 +1,6 @@
-## Rough Draft
+# Architecture Formal Writeup
+
+## Rough Draft / Abstract
 ```
 Summary
 
@@ -28,6 +30,8 @@ Finally, there will be the clients themselves which allows user to:
 - Send messages to conversation
 
 ```
+
+## Specification
 
 ### Message Payload Format
 ```

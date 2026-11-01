@@ -61,7 +61,7 @@ Common flows:
 - If the conversation ID exists --> place the message onto the respective worker thread's message queue
 - Else conversation does NOT exist --> create a worker thread for conversation, and place onto worker's message queue
 
-![Manager server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/manager-server-thread-diagram.png?raw=true)
+![Manager server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/images/manager-server-thread-diagram.png?raw=true)
 
 ### Worker Server Thread
 Responsible for:
@@ -80,7 +80,7 @@ Example of conversation JSON file:
 {"timestamp": 1730000002, "sender": "Alice", "message": "How are you?"}
 ```
 
-![Worker server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/worker-server-thread-diagram.png?raw=true)
+![Worker server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/images/worker-server-thread-diagram.png?raw=true)
 
 ### Client
 Responsible for:

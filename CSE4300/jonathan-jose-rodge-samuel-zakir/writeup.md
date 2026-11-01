@@ -57,6 +57,8 @@ Common flows:
 - If the conversation ID exists --> place the message onto the respective worker thread's message queue
 - Else conversation does NOT exist --> create a worker thread for conversation, and place onto worker's message queue
 
+![Manager server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/manager-server-thread-diagram.png?raw=true)
+
 ### Worker Server Thread
 Responsible for:
 - Sending entire conversation for newly joined clients to conversation
@@ -73,6 +75,9 @@ Example of conversation JSON file:
 {"timestamp": 1730000001, "sender": "Bob", "message": "Hey Alice"}
 {"timestamp": 1730000002, "sender": "Alice", "message": "How are you?"}
 ```
+
+![Worker server thread diagram](https://github.com/jonzyyyy/CSE-OS-Fall-2026/blob/main/CSE4300/jonathan-jose-rodge-samuel-zakir/worker-server-thread-diagram.png?raw=true)
+
 ### Client
 Responsible for:
 - Listening for new messages from worker thread to display onto user screen

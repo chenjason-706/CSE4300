@@ -69,7 +69,7 @@ Responsible for:
 - Broadcasting new messages for already listening clients 
 
 A worker should track:
-1. Listening clients (ip+port)
+1. Listening clients 
 2. Message queue
 3. Conversation history JSON file
 

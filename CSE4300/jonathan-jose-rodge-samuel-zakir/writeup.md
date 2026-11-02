@@ -33,7 +33,10 @@ Finally, there will be the clients themselves which allows user to:
 
 ## Specification
 
+Use as an example: [TCP Server-Client implementation in C](https://www.geeksforgeeks.org/c/tcp-server-client-implementation-in-c/)
+
 ### Message Payload Format
+Format should also follow JSONL format as mentioned later in **Worker Server Thread**
 ```
 # Client->Server message payload
 conversation_id: string
@@ -71,9 +74,11 @@ Responsible for:
 A worker should track:
 1. Listening clients 
 2. Message queue
-3. Conversation history JSON file
+3. Conversation history JSONL file
 
-Example of conversation JSON file:
+More on JSONL format: (https://jsonlines.org/)
+
+Example of conversation JSONL file:
 ```
 {"timestamp": 1730000000, "sender": "Alice", "message": "Hello"}
 {"timestamp": 1730000001, "sender": "Bob", "message": "Hey Alice"}

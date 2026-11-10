@@ -1,6 +1,5 @@
 # CPU Scheduler Simulator
-
-A C program that simulates CPU scheduling algorithms on a list of jobs loaded from a text file. Algorithms share one function signature so `main.c` can choose which to run at runtime.
+A program that simulates CPU scheduling algorithms on a list of jobs loaded from a text file. Algorithms share one function signature so `main.c` can choose which to run at runtime.
 
 ```text
 ./scheduler <datafile> <fcfs|sjf|rr> [quantum]
@@ -125,7 +124,7 @@ Only the “pick next job” and “how long to run” steps change between algo
 | 1 Process model | Done |
 | 2 Scheduler interface | Done |
 | 3 Makefile, main, stubs | Done |
-| 4 Ready queue | Not started |
-| 5 Metrics | Not started |
+| 4 Ready queue | Done |
+| 5 Metrics | Done |
 | 6 Algorithms (FCFS / SJF / RR) | Not started |
 | 7 Full tests | Smoke tests only |

@@ -23,18 +23,30 @@ void run_rr(Process procs[], int n, int quantum)
 		return;
 	}
 
+	/* added sort block to sort by arrival time to ensure that jobs that 
+	arrive during the same time window are queued in arrival order*/
+	for (int i = 1; i < n; i++) {
+		Process key = procs[i];
+		int j = i - 1;
+		while (j >= 0 && procs[j].arrival_time > key.arrival_time) {
+			procs[j + 1] = procs[j];
+			j--;
+		}
+		procs[j + 1] = key;
+	}
+ 
 	int q[n];
 	int head = 0, tail = 0, count = 0;
-
+ 
 	int admitted[n];
 	for (int i = 0; i < n; i++)
 		admitted[i] = 0;
-
+ 
 	int clock = 0;
 	int completed = 0;
-
+ 
 	admit_arrivals(procs, n, admitted, q, &tail, &count, clock);
-
+ 
 	while (completed < n) {
 		if (count == 0) {
 			int next = -1;
@@ -48,21 +60,21 @@ void run_rr(Process procs[], int n, int quantum)
 		admit_arrivals(procs, n, admitted, q, &tail, &count, clock);
 		continue;
 		}
-
+ 
 		int idx = q[head];
 		head = (head + 1) % n;
 		count--;
 		Process *p = &procs[idx];
-
+ 
 		if (p->start_time == -1)
 			p->start_time = clock;
-
+ 
 		int slice = (p->remaining_time < quantum) ? p-> remaining_time : quantum;
 		clock += slice;
 		p->remaining_time -= slice;
-
+ 
 		admit_arrivals(procs, n, admitted, q, &tail, &count, clock);
-
+ 
 		if (p->remaining_time > 0) {
 			q[tail] = idx;
 			tail = (tail + 1) % n;

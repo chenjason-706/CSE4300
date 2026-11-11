@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "scheduler.h"
+#include "../../include/scheduler.h"
 
 /*Non-preemptive SJF: once a job starts, it runs until it is completed, 
 choosing the job with the shortest burst time, instead of running 1 tick 

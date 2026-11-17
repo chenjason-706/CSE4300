@@ -133,7 +133,9 @@ def test_headers_define_expected_api():
     assert "metrics_turnaround" in metrics_h
     assert "metrics_waiting" in metrics_h
     assert "metrics_response" in metrics_h
+    assert "metrics_summarize" in metrics_h
     assert "metrics_print" in metrics_h
+    assert "MetricsSummary" in metrics_h
 
 
 def test_make_builds():
@@ -337,6 +339,58 @@ def test_too_many_args_fails():
     run([SCHEDULER, DATA, "fcfs", "4", "extra"], expect_ok=False)
 
 
+def test_compare_mode_table_and_csv():
+    csv_path = os.path.join(ROOT, "build", "compare.csv")
+    if os.path.isfile(csv_path):
+        os.remove(csv_path)
+
+    result = run([SCHEDULER, DATA, "compare", "4"])
+    assert "Comparison (RR quantum=4)" in result.stdout
+    assert "fcfs" in result.stdout
+    assert "sjf" in result.stdout
+    assert "rr" in result.stdout
+    assert "priority" in result.stdout
+    assert "Wrote build/compare.csv" in result.stdout
+    assert os.path.isfile(csv_path)
+
+    with open(csv_path, encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+    assert lines[0] == "algorithm,avg_waiting,avg_turnaround,avg_response"
+    assert any(line.startswith("fcfs,") for line in lines[1:])
+    assert any(line.startswith("sjf,") for line in lines[1:])
+    assert any(line.startswith("rr,") for line in lines[1:])
+    assert any(line.startswith("priority,") for line in lines[1:])
+
+    # Spot-check known averages from processes1.txt
+    by_algo = {}
+    for line in lines[1:]:
+        algo, waiting, turnaround, response = line.split(",")
+        by_algo[algo] = (float(waiting), float(turnaround), float(response))
+    assert abs(by_algo["fcfs"][0] - 8.75) < 0.005
+    assert abs(by_algo["sjf"][0] - 7.75) < 0.005
+    assert abs(by_algo["rr"][0] - 11.75) < 0.005
+    assert abs(by_algo["priority"][0] - 7.75) < 0.005
+    assert abs(by_algo["rr"][2] - 4.50) < 0.005
+
+
+def test_plot_compare_script():
+    csv_path = os.path.join(ROOT, "build", "compare.csv")
+    svg_path = os.path.join(ROOT, "build", "compare.svg")
+    if not os.path.isfile(csv_path):
+        run([SCHEDULER, DATA, "compare", "4"])
+    if os.path.isfile(svg_path):
+        os.remove(svg_path)
+
+    result = run(["python3", "scripts/plot_compare.py", "build/compare.csv"])
+    assert "Wrote build/compare.svg" in result.stdout
+    assert os.path.isfile(svg_path)
+    with open(svg_path, encoding="utf-8") as f:
+        content = f.read()
+    assert "<svg" in content
+    assert "fcfs" in content
+    assert "Waiting" in content
+
+
 def main():
     tests = [
         test_required_files_exist,
@@ -367,6 +421,8 @@ def main():
         test_empty_file_fails,
         test_bad_quantum_fails,
         test_too_many_args_fails,
+        test_compare_mode_table_and_csv,
+        test_plot_compare_script,
     ]
 
     failed = 0

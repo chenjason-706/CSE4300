@@ -9,7 +9,7 @@
 
 static void usage(const char *prog)
 {
-    fprintf(stderr, "Usage: %s <datafile> <fcfs|sjf|rr> [quantum]\n", prog);
+    fprintf(stderr, "Usage: %s <datafile> <fcfs|sjf|rr|priority> [quantum]\n", prog);
     fprintf(stderr, "Example: %s data/processes1.txt rr 4\n", prog);
 }
 
@@ -59,9 +59,10 @@ static int load_processes(const char *path, Process procs[], int max_n)
 static const Scheduler *find_scheduler(const char *name)
 {
     static const Scheduler table[] = {
-        {"fcfs", run_fcfs},
-        {"sjf",  run_sjf},
-        {"rr",   run_rr},
+        {"fcfs",     run_fcfs},
+        {"sjf",      run_sjf},
+        {"rr",       run_rr},
+        {"priority", run_priority},
     };
 
     size_t i;

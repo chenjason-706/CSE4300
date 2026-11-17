@@ -11,5 +11,6 @@ typedef struct {
 void run_fcfs(Process procs[], int n, int quantum);
 void run_sjf(Process procs[], int n, int quantum);
 void run_rr(Process procs[], int n, int quantum);
+void run_priority(Process procs[], int n, int quantum);
 
 #endif 

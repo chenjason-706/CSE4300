@@ -2,120 +2,134 @@
 A program that simulates CPU scheduling algorithms on a list of jobs loaded from a text file. Algorithms share one function signature so `main.c` can choose which to run at runtime.
 
 ```text
-./scheduler <datafile> <fcfs|sjf|rr> [quantum]
+./scheduler <datafile> <fcfs|sjf|rr|priority> [quantum]
 ```
 
-Example:
+Examples:
 
 ```bash
 make
 ./scheduler data/processes1.txt fcfs
+./scheduler data/processes1.txt sjf
 ./scheduler data/processes1.txt rr 4
+./scheduler data/processes1.txt priority
 ```
 
-Smoke tests for completed work:
+Run tests:
 
 ```bash
+make test
+# or
 python3 tests/run_tests.py
 ```
 
-## Phases
+---
 
-### Phase 1 — Process data model 
+## Project layout
 
-**Goal:** Define the job / PCB-like struct every scheduler will use.
-
-**Deliverable:** `include/process.h`
-
-| Field | Purpose |
-| --- | --- |
-| `pid` | Process ID from the input file |
-| `arrival_time` | When the job enters the system |
-| `burst_time` | Total CPU time needed |
-| `priority` | Priority value (for later priority scheduling) |
-| `remaining_time` | Time left; starts equal to `burst_time` |
-| `start_time` | First time on CPU; `-1` until first scheduled |
-| `finish_time` | When the job completes |
+```text
+emma-jason-alice-jeffery/
+├── Makefile
+├── README.md
+├── include/
+│   ├── process.h       # Process (job) struct
+│   ├── scheduler.h     # shared scheduler interface
+│   ├── queue.h         # ready-queue helpers
+│   └── metrics.h       # waiting / turnaround / response
+├── src/
+│   ├── main.c          # args, load file, dispatch
+│   ├── queue.c
+│   ├── metrics.c
+│   └── schedulers/
+│       ├── fcfs.c
+│       ├── sjf.c
+│       ├── rr.c
+│       └── priority.c
+├── data/
+│   └── processes1.txt
+├── tests/
+│   ├── run_tests.py
+│   ├── test_queue.c
+│   └── test_metrics.c
+└── build/
+```
 
 ---
 
-### Phase 2 — Shared scheduler interface 
+## Supported algorithms
 
-**Goal:** Give every algorithm the same signature so `main` can pick one with a function pointer.
+| CLI name | Algorithm | Behavior |
+| --- | --- | --- |
+| `fcfs` | First-Come, First-Served | Run jobs in arrival order to completion |
+| `sjf` | Shortest Job First | Non-preemptive; among ready jobs, pick shortest burst |
+| `rr` | Round Robin | Ready queue + time quantum (required); preempt and re-enqueue |
+| `priority` | Priority | Non-preemptive; among ready jobs, pick highest priority |
 
-**Deliverable:** `include/scheduler.h`
-
-- `Scheduler` struct: algorithm `name` + `run` function pointer
-- Common signature: `void run_*(Process procs[], int n, int quantum)`
-- Declarations for `run_fcfs`, `run_sjf`, and `run_rr`
-- `quantum` is used by Round Robin; ignored by FCFS and SJF
-
----
-
-### Phase 3 — Build plumbing and stubs 
-
-**Goal:** Compile, load jobs, and dispatch to a scheduler (even if the algorithm is still a stub).
-
-**Deliverables:**
-
-- `Makefile` — builds `src/*.c` and `src/schedulers/*.c` into `./scheduler`
-- `data/processes1.txt` — sample input (`pid arrival burst priority`)
-- `src/main.c` — parse args, load processes, init fields, map name → function, call `run`
-- Stub `fcfs.c` / `sjf.c` / `rr.c` — print that the algorithm is not implemented yet
-- `.gitignore` — ignore `build/` and the binary
-
-**Checkpoint:** `make` succeeds and `./scheduler data/processes1.txt fcfs` runs without crashing.
+**Priority convention:** a **lower** `priority` number means **higher** importance (same rule as `queue_take_highest_priority`). Quantum is ignored except for `rr`.
 
 ---
 
-### Phase 4 — Ready queue
+## Input format
 
-**Goal:** Shared queue helpers for “who is ready right now.”
+```text
+# pid arrival burst priority
+1 0 8 2
+2 1 4 1
+3 2 9 3
+4 3 5 2
+```
 
-**Planned deliverables:** `include/queue.h`, `src/queue.c`
-
-Useful operations: enqueue, dequeue, is_empty, and helpers to pick shortest job or highest priority among ready jobs. Needed especially for Round Robin and SJF.
+On load, `remaining_time` is set to `burst_time` and `start_time` is set to `-1`.
 
 ---
 
-### Phase 5 — Metrics 
+## Design
 
-**Goal:** Compute and print performance stats after a scheduler fills `start_time` / `finish_time`.
+**Shared interface** (`include/scheduler.h`):
 
-**Planned deliverables:** `include/metrics.h`, `src/metrics.c`
+```c
+typedef struct {
+    const char *name;
+    void (*run)(Process procs[], int n, int quantum);
+} Scheduler;
+```
+
+Every algorithm implements `void run_*(Process procs[], int n, int quantum)`.
+
+**Ready queue** (`queue.h` / `queue.c`): used by Round Robin (`enqueue` / `dequeue`) and Priority (`queue_take_highest_priority`).
+
+**Metrics** (after a run fills `start_time` / `finish_time`):
 
 - Turnaround = finish − arrival  
 - Waiting = turnaround − burst  
 - Response = start − arrival  
 
-Print a per-process table and averages, shared by all algorithms.
-
 ---
 
-### Phase 6 — Scheduling algorithms
+## Phases
 
-**Goal:** Replace stubs with real simulations.
+### Phase 1 — Process data model 
+`include/process.h` — PCB-like job fields including `priority`.
 
-| Order | Algorithm | Idea |
-| --- | --- | --- |
-| 1 | FCFS | Run jobs in arrival order to completion |
-| 2 | SJF | Among arrived jobs, pick shortest burst (non-preemptive first) |
-| 3 | RR | Ready queue + time quantum; preempt and re-enqueue if still remaining |
+### Phase 2 — Shared scheduler interface 
+`include/scheduler.h` — `Scheduler` + `run_fcfs` / `run_sjf` / `run_rr` / `run_priority`.
 
-Only the “pick next job” and “how long to run” steps change between algorithms. Validate FCFS by hand against the sample data before moving on.
+### Phase 3 — Build plumbing 
+Makefile, sample data, `main.c` load/dispatch.
 
----
+### Phase 4 — Ready queue 
+`queue.h` / `queue.c` with enqueue, dequeue, shortest, and highest-priority helpers.
+
+### Phase 5 — Metrics 
+`metrics.h` / `metrics.c` — per-process table and averages.
+
+### Phase 6 — Scheduling algorithms 
+FCFS, non-preemptive SJF, Round Robin, and non-preemptive Priority.
 
 ### Phase 7 — Tests 
-
-**Goal:** Automated checks for correctness.
-
-**Current:** `tests/run_tests.py` covers Phase 1–3 smoke tests (files, headers, build, load, dispatch, basic CLI errors).
-
-**Still to add:** Expected waiting / turnaround / response numbers per algorithm once Phase 6 is done.
+`make test` runs queue/metrics unit tests plus `tests/run_tests.py`.
 
 ---
-
 
 ## Status summary
 
@@ -123,8 +137,8 @@ Only the “pick next job” and “how long to run” steps change between algo
 | --- | --- |
 | 1 Process model | Done |
 | 2 Scheduler interface | Done |
-| 3 Makefile, main, stubs | Done |
+| 3 Makefile, main, data | Done |
 | 4 Ready queue | Done |
 | 5 Metrics | Done |
-| 6 Algorithms (FCFS / SJF / RR) | Not started |
-| 7 Full tests | Smoke tests only |
+| 6 Algorithms (FCFS / SJF / RR / Priority) | Done |
+| 7 Tests | Done |

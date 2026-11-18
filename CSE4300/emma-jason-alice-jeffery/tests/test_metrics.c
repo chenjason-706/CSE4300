@@ -36,8 +36,20 @@ int main(void)
 
     assert(metrics_complete(procs, 2) == 1);
 
+    {
+        MetricsSummary summary;
+        assert(metrics_summarize(procs, 2, &summary) == 0);
+        assert(summary.avg_turnaround > 9.49 && summary.avg_turnaround < 9.51);
+        assert(summary.avg_waiting > 3.49 && summary.avg_waiting < 3.51);
+        assert(summary.avg_response > 3.49 && summary.avg_response < 3.51);
+    }
+
     procs[1].remaining_time = 1;
     assert(metrics_complete(procs, 2) == 0);
+    {
+        MetricsSummary summary;
+        assert(metrics_summarize(procs, 2, &summary) == -1);
+    }
     procs[1].remaining_time = 0;
     procs[1].start_time = -1;
     assert(metrics_complete(procs, 2) == 0);

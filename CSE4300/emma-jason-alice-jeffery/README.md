@@ -2,7 +2,7 @@
 A program that simulates CPU scheduling algorithms on a list of jobs loaded from a text file. Algorithms share one function signature so `main.c` can choose which to run at runtime.
 
 ```text
-./scheduler <datafile> <fcfs|sjf|rr|priority> [quantum]
+./scheduler <datafile> <fcfs|sjf|rr|priority|compare> [quantum]
 ```
 
 Examples:
@@ -14,6 +14,17 @@ make
 ./scheduler data/processes1.txt rr 4
 ./scheduler data/processes1.txt priority
 ```
+
+Compare all algorithms and plot a chart:
+
+```bash
+./scheduler data/processes1.txt compare 4
+python3 scripts/plot_compare.py build/compare.csv
+# or in one step:
+make compare
+```
+
+`compare` runs FCFS, SJF, RR, and Priority on the same input, prints a side-by-side averages table, writes `build/compare.csv`, and the plot script writes `build/compare.svg`. If no quantum is given for `compare`, RR uses quantum **4**.
 
 Run tests:
 
@@ -35,9 +46,9 @@ emma-jason-alice-jeffery/
 │   ├── process.h       # Process (job) struct
 │   ├── scheduler.h     # shared scheduler interface
 │   ├── queue.h         # ready-queue helpers
-│   └── metrics.h       # waiting / turnaround / response
+│   └── metrics.h       # waiting / turnaround / response + summarize
 ├── src/
-│   ├── main.c          # args, load file, dispatch
+│   ├── main.c          # args, load file, dispatch, compare mode
 │   ├── queue.c
 │   ├── metrics.c
 │   └── schedulers/
@@ -45,6 +56,8 @@ emma-jason-alice-jeffery/
 │       ├── sjf.c
 │       ├── rr.c
 │       └── priority.c
+├── scripts/
+│   └── plot_compare.py # CSV → SVG comparison chart
 ├── data/
 │   └── processes1.txt
 ├── tests/
@@ -52,6 +65,8 @@ emma-jason-alice-jeffery/
 │   ├── test_queue.c
 │   └── test_metrics.c
 └── build/
+    ├── compare.csv
+    └── compare.svg
 ```
 
 ---
@@ -64,8 +79,9 @@ emma-jason-alice-jeffery/
 | `sjf` | Shortest Job First | Non-preemptive; among ready jobs, pick shortest burst |
 | `rr` | Round Robin | Ready queue + time quantum (required); preempt and re-enqueue |
 | `priority` | Priority | Non-preemptive; among ready jobs, pick highest priority |
+| `compare` | All of the above | Run each algo on a fresh copy of the jobs; table + CSV |
 
-**Priority convention:** a **lower** `priority` number means **higher** importance (same rule as `queue_take_highest_priority`). Quantum is ignored except for `rr`.
+**Priority convention:** a lower `priority` number means higher importance (same rule as `queue_take_highest_priority`). Quantum is required for `rr`, optional for `compare` (defaults to 4), ignored by the others.
 
 ---
 
@@ -124,10 +140,16 @@ Makefile, sample data, `main.c` load/dispatch.
 `metrics.h` / `metrics.c` — per-process table and averages.
 
 ### Phase 6 — Scheduling algorithms 
-FCFS, non-preemptive SJF, Round Robin, and non-preemptive Priority.
+FCFS, non-preemptive SJF, Round Robin, and non-preemptive Priority Scheduling.
 
-### Phase 7 — Tests 
-`make test` runs queue/metrics unit tests plus `tests/run_tests.py`.
+### Phase 7 — Tests, compare mode, and charts
+Automated checks plus cross-algorithm evaluation:
+- `make test`: queue/metrics unit tests and `tests/run_tests.py` (CLI, expected times, edge cases, compare mode)
+- `compare` mode: `./scheduler <datafile> compare [quantum]` runs FCFS, SJF, RR, and Priority on fresh copies of the same jobs
+- Prints a side-by-side averages table (waiting, turnaround, response)
+- Writes `build/compare.csv`
+- `scripts/plot_compare.py` turns that CSV into `build/compare.svg` (grouped bar chart; no extra Python packages)
+- Shortcut: `make compare` runs the comparison and plot on `data/processes1.txt` with quantum 4
 
 ---
 
@@ -141,4 +163,4 @@ FCFS, non-preemptive SJF, Round Robin, and non-preemptive Priority.
 | 4 Ready queue | Done |
 | 5 Metrics | Done |
 | 6 Algorithms (FCFS / SJF / RR / Priority) | Done |
-| 7 Tests | Done |
+| 7 Tests + compare/chart | Done |

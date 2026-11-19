@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+build/
+demo.jsonl
+out/
+.DS_Store

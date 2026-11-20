@@ -4,3 +4,6 @@ test_queue
 test_metrics
 *.o
 .DS_Store
+compare.csv
+compare.svg
+compare.png

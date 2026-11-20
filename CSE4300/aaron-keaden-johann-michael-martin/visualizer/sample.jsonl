@@ -1,0 +1,8 @@
+{"type":"config","frames":3,"tlb_size":2,"policy":"fifo","tlb_policy":"lru","asid":false}
+{"type":"access","t":0,"pid":1,"op":"R","vaddr":"0x1000","vpn":1,"tlb":"miss","pt":"fault","frame":0,"evict":null,"swap_in":false,"tlb_evict":null}
+{"type":"access","t":1,"pid":1,"op":"R","vaddr":"0x1004","vpn":1,"tlb":"hit","pt":null,"frame":0,"evict":null,"swap_in":false,"tlb_evict":null}
+{"type":"access","t":2,"pid":1,"op":"W","vaddr":"0x2000","vpn":2,"tlb":"miss","pt":"fault","frame":1,"evict":null,"swap_in":false,"tlb_evict":null}
+{"type":"access","t":3,"pid":1,"op":"R","vaddr":"0x3000","vpn":3,"tlb":"miss","pt":"fault","frame":2,"evict":null,"swap_in":false,"tlb_evict":[1,1]}
+{"type":"access","t":4,"pid":1,"op":"R","vaddr":"0x4000","vpn":4,"tlb":"miss","pt":"fault","frame":0,"evict":{"pid":1,"vpn":1,"dirty":false,"swap_slot":null},"swap_in":false,"tlb_evict":[1,2]}
+{"type":"access","t":5,"pid":1,"op":"R","vaddr":"0x5000","vpn":5,"tlb":"miss","pt":"fault","frame":1,"evict":{"pid":1,"vpn":2,"dirty":true,"swap_slot":0},"swap_in":false,"tlb_evict":[1,3]}
+{"type":"access","t":6,"pid":1,"op":"R","vaddr":"0x2000","vpn":2,"tlb":"miss","pt":"fault","frame":2,"evict":{"pid":1,"vpn":3,"dirty":false,"swap_slot":null},"swap_in":true,"tlb_evict":[1,4]}

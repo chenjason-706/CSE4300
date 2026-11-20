@@ -3,19 +3,28 @@
 
 #include "process.h"
 
-/* turnaround = finish - arrival */
+typedef struct {
+    double avg_waiting;
+    double avg_turnaround;
+    double avg_response;
+} MetricsSummary;
+
+/* Turnaround = finish - arrival */
 int metrics_turnaround(const Process *p);
 
-/* waiting = turnaround - burst */
+/* Waiting = turnaround - burst */
 int metrics_waiting(const Process *p);
 
-/* response = start - arrival */
+/* Response = start - arrival */
 int metrics_response(const Process *p);
 
-/* true if every process was scheduled and finished. */
+/* True if every process was scheduled and finished. */
 int metrics_complete(const Process procs[], int n);
 
-/* print per-process table and averages, no-op message if incomplete. */
+/* Average waiting / turnaround / response. Returns 0 on success, -1 if incomplete. */
+int metrics_summarize(const Process procs[], int n, MetricsSummary *out);
+
+/* Print per-process table and averages. */
 void metrics_print(const Process procs[], int n);
 
-#endif
+#endif /* METRICS_H */

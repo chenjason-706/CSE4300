@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Memory Simulator</title>
+  <style>
+    :root { color-scheme: dark; --bg: #101827; --panel: #1e293b; --row: #334155; --text: #f8fafc; --muted: #94a3b8; --accent: #60a5fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 26px; font: 15px/1.5 Arial, sans-serif; background: var(--bg); color: var(--text); }
+    main { max-width: 1600px; margin: 0 auto; }
+    h1 { color: var(--accent); margin: 0 0 6px; font-size: 30px; }
+    h2 { font-size: 21px; margin: 0 0 14px; }
+    h3 { font-size: 15px; margin: 14px 0 7px; }
+    .intro { margin-top: 0; color: #cbd5e1; }
+    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 12px; }
+    .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    button { cursor: pointer; border: 1px solid #64748b; background: #e2e8f0; color: #0f172a; padding: 9px 14px; border-radius: 6px; font-weight: 600; }
+    button:hover:not(:disabled) { background: #bfdbfe; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    input[type="file"] { max-width: 100%; }
+    input[type="range"] { width: 120px; accent-color: #3b82f6; vertical-align: middle; }
+    .speed-label { white-space: nowrap; }
+    .status { margin: 12px 0; color: #e2e8f0; min-height: 24px; }
+    .event-detail { padding: 10px 14px; border-left: 4px solid #64748b; background: #1e293b; border-radius: 5px; margin-bottom: 15px; min-height: 43px; }
+    .event-detail.hit { border-color: #22c55e; }
+    .event-detail.miss { border-color: #eab308; }
+    .event-detail.fault { border-color: #ef4444; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+    .stat { background: var(--panel); padding: 13px; border-radius: 9px; text-align: center; }
+    .stat h3 { font-size: 14px; font-weight: 500; color: var(--muted); margin: 2px 0 6px; }
+    .stat p { font-size: 27px; font-weight: 700; margin: 0; }
+    .panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .panel { background: var(--panel); padding: 20px; border-radius: 10px; min-height: 165px; min-width: 0; }
+    .entries { max-height: 360px; overflow: auto; }
+    .frame { background: var(--row); padding: 9px 12px; border-radius: 6px; margin: 6px 0; overflow-wrap: anywhere; }
+    .frame.active-hit { background: #166534; }
+    .frame.active-miss { background: #854d0e; }
+    .frame.active-fault { background: #991b1b; }
+    .frame.invalid { color: #cbd5e1; opacity: .75; }
+    .muted { color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; color: #cbd5e1; font-size: 13px; margin: 14px 0 0; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+    .hit-dot { background: #22c55e; } .miss-dot { background: #eab308; } .fault-dot { background: #ef4444; }
+    @media (max-width: 800px) { body { padding: 16px; } .panels { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Virtual Memory Simulator</h1>
+  <p class="intro">Interactive visualization of virtual memory operations</p>
+
+  <div class="toolbar">
+    <input type="file" id="fileInput" accept=".jsonl,.txt,application/x-ndjson" aria-label="Choose simulation event log">
+    <div class="controls">
+      <button id="back" disabled>Previous</button>
+      <button id="next" disabled>Next</button>
+      <button id="play" disabled>Play</button>
+      <button id="pause" disabled>Pause</button>
+      <label class="speed-label" for="speed">Speed:
+        <input type="range" id="speed" min="1" max="10" value="5">
+        <span id="speedValue">5</span>/10
+      </label>
+    </div>
+  </div>
+
+  <p id="status" class="status" aria-live="polite">Load a simulation log to begin.</p>
+  <div id="eventDetail" class="event-detail">No event selected.</div>
+
+  <div class="stats">
+    <div class="stat"><h3>TLB Hits</h3><p id="hits">0</p></div>
+    <div class="stat"><h3>TLB Misses</h3><p id="misses">0</p></div>
+    <div class="stat"><h3>Page Faults</h3><p id="faults">0</p></div>
+    <div class="stat"><h3>Swap Writes</h3><p id="swapWrites">0</p></div>
+  </div>
+
+  <div class="panels">
+    <section class="panel"><h2>TLB Entries</h2><div id="tlbPanel" class="entries">No data loaded</div></section>
+    <section class="panel"><h2>Physical Frames</h2><div id="framesPanel" class="entries">No data loaded</div></section>
+    <section class="panel"><h2>Page Tables</h2><div id="pageTablePanel" class="entries">No data loaded</div></section>
+    <section class="panel"><h2>Swap Space</h2><div id="swapPanel" class="entries">No data loaded</div></section>
+  </div>
+  <div class="legend"><span><i class="dot hit-dot"></i>TLB hit</span><span><i class="dot miss-dot"></i>TLB miss / page-table hit</span><span><i class="dot fault-dot"></i>Page fault</span></div>
+</main>
+<script>
+  "use strict";
+
+  const el = id => document.getElementById(id);
+  let config = null;
+  let events = [];
+  let currentStep = -1;
+  let playbackTimer = null;
+  let state = emptyState(0);
+
+  function emptyState(frameCount) {
+    return {
+      frames: Array(frameCount).fill(null),
+      tlb: new Map(),
+      pageTables: new Map(),
+      swap: new Map(),
+      stats: { hits: 0, misses: 0, faults: 0, swapWrites: 0 }
+    };
+  }
+
+  function key(pid, vpn) { return `${pid}:${vpn}`; }
+
+  // Every event changes a model of memory. The visualizer never changes simulator data.
+  function applyEvent(event) {
+    if (event.type === "switch") {
+      if (event.flushed) state.tlb.clear();
+      return;
+    }
+    if (event.type !== "access") return;
+
+    const k = key(event.pid, event.vpn);
+    if (!state.pageTables.has(event.pid)) state.pageTables.set(event.pid, new Map());
+
+    if (event.evict) {
+      const victim = event.evict;
+      state.tlb.delete(key(victim.pid, victim.vpn));
+      if (!state.pageTables.has(victim.pid)) state.pageTables.set(victim.pid, new Map());
+      const victimPages = state.pageTables.get(victim.pid);
+      const previous = victimPages.get(victim.vpn) || {};
+      victimPages.set(victim.vpn, {
+        ...previous, valid: false, frame: null,
+        dirty: !!victim.dirty, swapSlot: victim.swap_slot ?? previous.swapSlot ?? null
+      });
+      if (victim.dirty) {
+        state.stats.swapWrites++;
+        if (victim.swap_slot != null) {
+          state.swap.set(victim.swap_slot, { pid: victim.pid, vpn: victim.vpn });
+        }
+      }
+    }
+
+    // A swap-in reads the page back but the MMU keeps its copy in swap, so the
+    // slot stays occupied. Remember which slot backs the page for the table view.
+    let backingSlot = null;
+    for (const [slot, page] of state.swap) {
+      if (page.pid === event.pid && page.vpn === event.vpn) backingSlot = slot;
+    }
+
+    if (event.tlb_evict != null) {
+      const removed = event.tlb_evict;
+      const oldPid = Array.isArray(removed) ? removed[0] : removed.pid;
+      const oldVpn = Array.isArray(removed) ? removed[1] : removed.vpn;
+      state.tlb.delete(key(oldPid, oldVpn));
+    }
+
+    if (event.tlb === "hit") {
+      state.stats.hits++;
+      // A hit refreshes recency for the default LRU display.
+      if (state.tlb.has(k)) {
+        const entry = state.tlb.get(k);
+        state.tlb.delete(k);
+        state.tlb.set(k, entry);
+      }
+    } else if (event.tlb === "miss") {
+      state.stats.misses++;
+      state.tlb.delete(k);
+      state.tlb.set(k, { pid: event.pid, vpn: event.vpn, frame: event.frame });
+    }
+
+    if (event.pt === "fault") state.stats.faults++;
+    if (Number.isInteger(event.frame) && event.frame >= 0 && event.frame < state.frames.length) {
+      state.frames[event.frame] = { pid: event.pid, vpn: event.vpn };
+    }
+    const oldPte = state.pageTables.get(event.pid).get(event.vpn);
+    state.pageTables.get(event.pid).set(event.vpn, {
+      valid: true, frame: event.frame,
+      dirty: event.op === "W" || (event.pt !== "fault" && !!oldPte?.dirty),
+      swapSlot: backingSlot
+    });
+  }
+
+  // 'Previous' uses a replay from the start so evictions and swap restores undo correctly.
+  function goToStep(target) {
+    if (!config || target < -1 || target >= events.length) return;
+    if (target === currentStep + 1) {
+      applyEvent(events[target]);
+    } else {
+      state = emptyState(config.frames);
+      for (let i = 0; i <= target; i++) applyEvent(events[i]);
+    }
+    currentStep = target;
+    render();
+  }
+
+  function makeRow(text, className = "") {
+    const row = document.createElement("div");
+    row.className = `frame ${className}`.trim();
+    row.textContent = text;
+    return row;
+  }
+
+  function setRows(id, rows, emptyMessage) {
+    const panel = el(id);
+    panel.replaceChildren();
+    if (!rows.length) {
+      const msg = document.createElement("span");
+      msg.className = "muted";
+      msg.textContent = emptyMessage;
+      panel.appendChild(msg);
+    } else panel.append(...rows);
+  }
+
+  function render() {
+    if (!config) return;
+    const event = currentStep >= 0 ? events[currentStep] : null;
+    const activeClass = event?.type === "access"
+      ? event.pt === "fault" ? "active-fault" : event.tlb === "hit" ? "active-hit" : "active-miss"
+      : "";
+
+    const frameRows = state.frames.map((page, index) => {
+      const active = event?.type === "access" && event.frame === index ? activeClass : "";
+      return makeRow(page
+        ? `Frame ${index}: PID ${page.pid}, VPN ${page.vpn}`
+        : `Frame ${index}: Empty`, active);
+    });
+    setRows("framesPanel", frameRows, "No physical frames configured");
+
+    const tlbRows = [...state.tlb.values()].map(entry =>
+      makeRow(`PID ${entry.pid} | VPN ${entry.vpn} → Frame ${entry.frame}`));
+    setRows("tlbPanel", tlbRows, "TLB Empty");
+
+    const tablePanel = el("pageTablePanel");
+    tablePanel.replaceChildren();
+    if (!state.pageTables.size) tablePanel.append(makeRow("No page mappings"));
+    for (const [pid, pages] of state.pageTables) {
+      const heading = document.createElement("h3");
+      heading.textContent = `Process ${pid}`;
+      tablePanel.appendChild(heading);
+      for (const [vpn, pte] of pages) {
+        tablePanel.appendChild(makeRow(pte.valid
+          ? `VPN ${vpn} → Frame ${pte.frame} (Valid${pte.dirty ? ", Dirty" : ""}${pte.swapSlot != null ? `, copy in swap slot ${pte.swapSlot}` : ""})`
+          : `VPN ${vpn} → Not in memory (Invalid${pte.swapSlot != null ? `, swap slot ${pte.swapSlot}` : ""})`,
+          pte.valid ? "" : "invalid"));
+      }
+    }
+
+    const swapRows = [...state.swap.entries()].map(([slot, page]) =>
+      makeRow(`Slot ${slot}: PID ${page.pid}, VPN ${page.vpn}`));
+    setRows("swapPanel", swapRows, "Swap Empty");
+
+    el("hits").textContent = state.stats.hits;
+    el("misses").textContent = state.stats.misses;
+    el("faults").textContent = state.stats.faults;
+    el("swapWrites").textContent = state.stats.swapWrites;
+
+    const detail = el("eventDetail");
+    detail.className = `event-detail ${event?.type === "access" ? (event.pt === "fault" ? "fault" : event.tlb === "hit" ? "hit" : "miss") : ""}`;
+    if (!event) {
+      detail.textContent = "Ready. Click Next or Play to begin.";
+    } else if (event.type === "switch") {
+      detail.textContent = `Context switch: PID ${event.from ?? "(none)"} → PID ${event.to}. ${event.flushed ? "TLB flushed." : "TLB retained (ASID or initial switch)."}`;
+    } else if (event.type === "access") {
+      const note = event.evict
+        ? ` Evicted PID ${event.evict.pid}, VPN ${event.evict.vpn}${event.evict.dirty ? " (dirty: written to swap)" : " (clean)"}.`
+        : "";
+      detail.textContent = `PID ${event.pid} ${event.op === "W" ? "writes" : "reads"} ${event.vaddr ?? `VPN ${event.vpn}`} → Frame ${event.frame}. ` +
+        `TLB ${event.tlb}; ${event.pt === "fault" ? "page fault" : event.pt === "hit" ? "page-table hit" : "page-table lookup skipped"}.` +
+        note + (event.swap_in ? " Page read back from swap (its swap copy is kept)." : "");
+    } else detail.textContent = `Event: ${event.type}`;
+
+    el("status").textContent = event
+      ? `Step ${currentStep + 1}/${events.length} | ${config.frames} frames | TLB size: ${config.tlb_size} | ${config.policy.toUpperCase()}`
+      : `Loaded ${events.length} events | ${config.frames} frames | TLB size: ${config.tlb_size} | Policy: ${config.policy}`;
+    el("back").disabled = currentStep < 0;
+    el("next").disabled = currentStep >= events.length - 1;
+    el("play").disabled = events.length === 0 || playbackTimer !== null;
+    el("pause").disabled = playbackTimer === null;
+  }
+
+  function pausePlayback() {
+    if (playbackTimer !== null) clearTimeout(playbackTimer);
+    playbackTimer = null;
+    if (config) render();
+  }
+
+  function playbackDelay() { return 1100 - Number(el("speed").value) * 100; }
+
+  function scheduleNext() {
+    if (playbackTimer === null) return;
+    if (currentStep >= events.length - 1) { pausePlayback(); return; }
+    playbackTimer = setTimeout(() => {
+      // Keep a non-null marker until the next tick is scheduled.
+      goToStep(currentStep + 1);
+      if (currentStep >= events.length - 1) pausePlayback();
+      else scheduleNext();
+    }, playbackDelay());
+  }
+
+  function playSimulation() {
+    if (!config || events.length === 0 || playbackTimer !== null) return;
+    if (currentStep >= events.length - 1) goToStep(-1);
+    // Start immediately, then pace subsequent events according to the speed slider.
+    goToStep(currentStep + 1);
+    if (currentStep >= events.length - 1) return;
+    playbackTimer = -1;
+    scheduleNext();
+    render();
+  }
+
+  el("next").addEventListener("click", () => { pausePlayback(); goToStep(currentStep + 1); });
+  el("back").addEventListener("click", () => { pausePlayback(); goToStep(currentStep - 1); });
+  el("play").addEventListener("click", playSimulation);
+  el("pause").addEventListener("click", pausePlayback);
+  el("speed").addEventListener("input", () => {
+    el("speedValue").textContent = el("speed").value;
+    if (playbackTimer !== null) {
+      clearTimeout(playbackTimer);
+      playbackTimer = -1;
+      scheduleNext();
+    }
+  });
+
+  el("fileInput").addEventListener("change", async event => {
+    pausePlayback();
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const records = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+        .map((line, index) => {
+          try { return JSON.parse(line); }
+          catch { throw new Error(`Invalid JSON on line ${index + 1}`); }
+        });
+      if (!records.length || records[0].type !== "config")
+        throw new Error("The first line must be a config record.");
+      const cfg = records[0];
+      if (!Number.isInteger(cfg.frames) || cfg.frames <= 0 ||
+          !Number.isInteger(cfg.tlb_size) || cfg.tlb_size <= 0)
+        throw new Error("Config requires positive integer frames and tlb_size.");
+      if (records.slice(1).some(e => !e || typeof e.type !== "string"))
+        throw new Error("Every event needs a type field.");
+      config = cfg;
+      events = records.slice(1);
+      state = emptyState(config.frames);
+      currentStep = -1;
+      render();
+    } catch (error) {
+      config = null;
+      events = [];
+      currentStep = -1;
+      state = emptyState(0);
+      el("status").textContent = `Could not load simulation: ${error.message}`;
+      el("eventDetail").textContent = "Choose a valid .jsonl log file.";
+      for (const id of ["tlbPanel", "framesPanel", "pageTablePanel", "swapPanel"])
+        el(id).textContent = "No data loaded";
+      for (const id of ["hits", "misses", "faults", "swapWrites"]) el(id).textContent = "0";
+      for (const id of ["back", "next", "play", "pause"]) el(id).disabled = true;
+    }
+  });
+</script>
+</body>
+</html>
